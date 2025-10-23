@@ -2,4 +2,4 @@ run:
 	cargo run
 
 test:
-	NI_HOME="/tmp" cargo test
+	NI_HOME="/tmp" cargo test $(ARGS)
