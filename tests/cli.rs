@@ -6,10 +6,14 @@ use std::path::Path;
 type TestFnResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn test_touch_file() -> TestFnResult {
+fn test_write_file() -> TestFnResult {
     // Arrange
+    let temp = assert_fs::TempDir::new().unwrap();
+    unsafe {
+        env::set_var("NI_HOME", temp.to_str().unwrap());
+    }
     let ni_home_path = env::var("NI_HOME")?;
-    assert_eq!(ni_home_path, "/tmp");
+    assert_eq!(ni_home_path, temp.to_str().unwrap());
 
     // Act
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
@@ -18,25 +22,20 @@ fn test_touch_file() -> TestFnResult {
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
+COPY . /app
+WORKDIR /app
+
+FROM base AS prod-deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
 FROM base AS build
-COPY . /usr/src/app
-WORKDIR /usr/src/app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm run -r build
-RUN pnpm deploy --filter=app1 --prod /prod/app1
-RUN pnpm deploy --filter=app2 --prod /prod/app2
+RUN pnpm run build
 
-FROM base AS app1
-COPY --from=build /prod/app1 /prod/app1
-WORKDIR /prod/app1
+FROM base
+COPY --from=prod-deps /app/node_modules /app/node_modules
+COPY --from=build /app/dist /app/dist
 EXPOSE 8000
-CMD [ "pnpm", "start" ]
-
-FROM base AS app2
-COPY --from=build /prod/app2 /prod/app2
-WORKDIR /prod/app2
-EXPOSE 8001
 CMD [ "pnpm", "start" ]
 "##,
     );
@@ -52,30 +51,25 @@ CMD [ "pnpm", "start" ]
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
+COPY . /app
+WORKDIR /app
+
+FROM base AS prod-deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
 FROM base AS build
-COPY . /usr/src/app
-WORKDIR /usr/src/app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm run -r build
-RUN pnpm deploy --filter=app1 --prod /prod/app1
-RUN pnpm deploy --filter=app2 --prod /prod/app2
+RUN pnpm run build
 
-FROM base AS app1
-COPY --from=build /prod/app1 /prod/app1
-WORKDIR /prod/app1
+FROM base
+COPY --from=prod-deps /app/node_modules /app/node_modules
+COPY --from=build /app/dist /app/dist
 EXPOSE 8000
-CMD [ "pnpm", "start" ]
-
-FROM base AS app2
-COPY --from=build /prod/app2 /prod/app2
-WORKDIR /prod/app2
-EXPOSE 8001
 CMD [ "pnpm", "start" ]
 "##,
     );
 
-    fs::remove_file(&imported_path)?;
+    temp.close().unwrap();
 
     Ok(())
 }
