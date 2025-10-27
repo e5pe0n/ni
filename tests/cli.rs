@@ -6,37 +6,7 @@ use std::path::Path;
 type TestFnResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn test_install() -> TestFnResult {
-    // Arrange
-    let ni_home_path = env::var("NI_HOME")?;
-    assert_eq!(ni_home_path, "/tmp");
-
-    // Act
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))?;
-    cmd.args(["install", "https://github.com/e5pe0n/void.git"]);
-
-    // Assert
-    let output = cmd.assert().success();
-
-    // Print the captured stdout to see the println! output
-    println!(
-        "Program stdout: {}",
-        String::from_utf8_lossy(&output.get_output().stdout)
-    );
-    println!(
-        "Program stderr: {}",
-        String::from_utf8_lossy(&output.get_output().stderr)
-    );
-
-    let imported_dir_path = Path::new(&ni_home_path).join("void");
-    assert!(imported_dir_path.join("tsconfig.json").exists());
-
-    fs::remove_dir(imported_dir_path)?;
-    Ok(())
-}
-
-#[test]
-fn test_touch_file() -> Result<(), Box<dyn std::error::Error>> {
+fn test_touch_file() -> TestFnResult {
     // Arrange
     let ni_home_path = env::var("NI_HOME")?;
     assert_eq!(ni_home_path, "/tmp");

@@ -1,9 +1,8 @@
-use clap::{Args, Parser, Subcommand};
+use clap::Parser;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write, stdin};
-use std::path::{Path, PathBuf};
-use std::process;
+use std::path::PathBuf;
 
 const ENV_VAR_KEY_NI_HOME: &'static str = "NI_HOME";
 
@@ -11,19 +10,6 @@ const ENV_VAR_KEY_NI_HOME: &'static str = "NI_HOME";
 #[command(version, about, long_about = None)]
 struct Cli {
     name: Option<String>,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    Install(InstallArgs),
-}
-
-#[derive(Args)]
-struct InstallArgs {
-    url: String,
 }
 
 fn main() {
@@ -33,30 +19,6 @@ fn main() {
     };
 
     let cli = Cli::parse();
-
-    if let Some(command) = &cli.command {
-        match command {
-            Command::Install(args) => {
-                let trimmed = &args.url[..&args.url.len() - 4]; // remove ".git"
-                let dirname = trimmed
-                    .split("/")
-                    .last()
-                    .expect("failed to extract repo name.");
-                let to_path = Path::new(&ni_home_path)
-                    .join(dirname)
-                    .to_str()
-                    .expect("failed to extract dirname.")
-                    .to_owned();
-                let output = process::Command::new("git")
-                    .args(["clone", &args.url, &to_path])
-                    .output()
-                    .expect("failed to git clone.");
-                if !output.status.success() {
-                    panic!("failed to git clone.");
-                }
-            }
-        }
-    }
 
     if let Some(name) = &cli.name {
         let path_buf: PathBuf = [&ni_home_path, name].iter().collect();
